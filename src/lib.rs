@@ -1,4 +1,5 @@
 pub mod client;
+mod protocol;
 mod tcp_client;
 
 pub fn add(left: usize, right: usize) -> usize {
