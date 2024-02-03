@@ -2,7 +2,7 @@ use c_enum::c_enum;
 
 c_enum! {
     #[derive(Copy,Clone,PartialEq, Eq)]
-    pub enum XCPCommand: u8 {
+    pub enum XcpCommand: u8 {
         Connect = 0xff,
         Disconnect = 0xfe,
         GetStatus = 0xfd,
@@ -133,7 +133,7 @@ c_enum! {
 
 c_enum! {
     #[derive(Copy,Clone,PartialEq, Eq)]
-    pub enum XCPResponse: u8 {
+    pub enum XcpResponse: u8 {
         Result = 0xff,
         Error = 0xfe,
         Event = 0xfd,

@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 a2lfile = "1.5"
 c-enum = "0.2"
+cross_usb = "0.2"
