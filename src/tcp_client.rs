@@ -11,13 +11,17 @@ use crate::{
     protocol::standard::XcpConnectResponse,
 };
 
+///Parameters necessary to set up a XCP connection over the TCP IP Protocol
 pub struct TcpConnectionParams {
+    ///IP address of the server you wish to connect to
     pub addr: SocketAddr,
+    ///Acceptable response delay from the server before the connection is deemed terminated
     pub timeout: Duration,
 }
 
 impl XcpConnection {
     ///Try to connect to a TCP based XCP server
+    /// * params
     pub fn tcp_connect(params: TcpConnectionParams) -> Option<XcpConnection> {
         let (xcp_send, writer) = channel::<Vec<u8>>();
         let (reader, xcp_receive) = channel::<Vec<u8>>();
@@ -57,7 +61,7 @@ impl XcpConnection {
             return None;
         };
         // Receive response, probably shouldn't fail if the sending failed, unless the connection died inbetween those times.
-        let Ok(response) = xcp_receive.recv() else {
+        let Ok(response) = xcp_receive.recv_timeout(params.timeout).recv() else {
             return None;
         };
         // Validate response and save information in the Client struct
@@ -67,6 +71,7 @@ impl XcpConnection {
         Some(XcpConnection {
             xcp_send,
             xcp_receive,
+            timeout: params.timeout,
         })
     }
 }

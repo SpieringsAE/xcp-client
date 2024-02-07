@@ -21,7 +21,9 @@ pub struct XcpConnection {
     // maybe a better datatype than Vec<u8>, needs to be implement Send to go the connection handling thread.
     pub xcp_send: Sender<Vec<u8>>,
     pub xcp_receive: Receiver<Vec<u8>>,
+    pub timeout: Duration,
     // add fields specifying cto/dto lenght and other connection specific information
+    // Or make the xcp connect command a seperate method?
 }
 
 impl XcpConnection {
@@ -34,6 +36,7 @@ impl XcpConnection {
     }
 
     ///Disconnect the XCP connection, consumes the connection.
+    #[inline(always)]
     pub fn disconnect(self) {
         _ = self.send(vec![XcpCommand::Disconnect.0]);
     }
