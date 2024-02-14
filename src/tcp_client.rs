@@ -23,49 +23,53 @@ impl XcpConnection {
     ///Try to connect to a TCP based XCP server
     /// * params
     pub fn tcp_connect(params: TcpConnectionParams) -> Option<XcpConnection> {
-        let (xcp_send, writer) = channel::<Vec<u8>>();
-        let (reader, xcp_receive) = channel::<Vec<u8>>();
+        let (xcp_send, writer) = channel::<Box<[u8]>>();
+        let (reader, xcp_receive) = channel::<Box<[u8]>>();
         let xcp_send = xcp_send.clone();
 
         thread::spawn(move || {
             //receive thread
             let mut readstream =
                 std::net::TcpStream::connect_timeout(&params.addr, params.timeout).unwrap();
-            let mut writestream = readstream.try_clone().unwrap();
+            let mut writestream = readstream.try_clone().unwrap(); // thread is allowed to panic and die if it can't make a readstream
 
             thread::spawn(move || {
                 //send thread
                 loop {
-                    let recv = writer.recv().unwrap();
+                    let recv = writer.recv().unwrap(); // thread is allowed to panic and die when the channel is broken
                     if recv[0] == XcpCommand::Disconnect.0 {
-                        writestream
-                            .write(recv.as_slice())
-                            .expect("Could not send response to XCP server");
+                        _ = writestream
+                            .write_all(&recv);
+                        _=writestream.flush();
                         break;
                     }
-                    writestream
-                        .write(recv.as_slice())
-                        .expect("Could not send response to XCP server");
+                    if let Err(_) =writestream
+                        .write_all(&recv){
+                            eprintln!("write stream is terminating");
+                            break;
+                    }
                 }
             });
-
+            let mut recv_buf = [0u8;2048];
             loop {
                 //receive loop
-                let mut recv_buf = Vec::new();
-                readstream.read_to_end(&mut recv_buf).unwrap();
-                reader.send(recv_buf).unwrap();
+                let num_bytes = readstream.read(&mut recv_buf).unwrap();
+                if let Err(_) = reader.send(recv_buf[0..num_bytes].into()) {
+                    eprintln!("receive stream is terminating");
+                    break;
+                }
             }
         });
         // Send Connect request, fails if the TcpStream fails to connect
-        let Ok(()) = xcp_send.send(vec![XcpCommand::Connect.0, 0]) else {
+        let Ok(()) = xcp_send.send([XcpCommand::Connect.0, 0].into()) else {
             return None;
         };
         // Receive response, probably shouldn't fail if the sending failed, unless the connection died inbetween those times.
-        let Ok(response) = xcp_receive.recv_timeout(params.timeout).recv() else {
+        let Ok(response) = xcp_receive.recv_timeout(params.timeout) else {
             return None;
         };
-        // Validate response and save information in the Client struct
-        let Some(connect_response) = XcpConnectResponse::from_bytes(response.as_slice()) else {
+        // Validate response and save information in the Connection struct
+        let Ok(connect_response) = bincode::deserialize::<XcpConnectResponse>(&response) else {
             return None;
         };
         Some(XcpConnection {

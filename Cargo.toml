@@ -6,6 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+serde = { version = "1", features = ["derive"] }
+bincode = "1"
 a2lfile = "1.5"
 c-enum = "0.2"
 cross_usb = "0.2"
